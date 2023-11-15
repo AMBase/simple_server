@@ -23,7 +23,16 @@ fn handle_connection(mut tcp_stream: TcpStream) {
         .take_while(|line| !line.is_empty())
         .collect();
 
-    let response = handle_request(request).unwrap();
+    let result = handle_request(request);
+    let response = match result {
+        Ok(response) => response,
+        Err(error) => {
+            let data = format!("HTTP/1.1 {} {}\r\n", error.code, error.message).to_string();
+            let result = tcp_stream.write_all(data.as_bytes());
+            println!("{:#?}", result.unwrap());
+            return ();
+        }
+    };
 
     let mut data = String::new();
     match response.status {
@@ -41,14 +50,23 @@ fn handle_connection(mut tcp_stream: TcpStream) {
 }
 
 struct Response {
-    status: u8,
+    status: u16,
     headers: Vec<String>,
     body: String,
 }
 
+struct Error {
+    code: u16,
+    message: String,
+}
 
-fn handle_request(request: Vec<String>) -> Result<Response, String> {
+
+fn handle_request(request: Vec<String>) -> Result<Response, Error> {
     println!("{request:#?}");
+
+    if request.len() <= 0 {
+        return Err(Error {code: 500, message: String::from("Internal Server Error")});
+    }
 
     let status = 200;
     let headers = vec![
