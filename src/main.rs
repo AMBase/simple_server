@@ -70,10 +70,10 @@ fn handle_request(request: Vec<String>) -> Result<Response, Error> {
 
     let status = 200;
     let headers = vec![
-        String::from("Content-Type: text/plain"),
+        String::from("Content-Type: application/json"),
         String::from("X-Custom-Header: simple server"),
     ];
-    let body = String::from("simple text");
+    let body = String::from(r#"{"data": "test"}"#);
     let response = Response {status, headers, body};
 
     Ok(response)
