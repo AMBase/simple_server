@@ -23,6 +23,8 @@ fn handle_connection(mut tcp_stream: TcpStream) {
         .take_while(|line| !line.is_empty())
         .collect();
 
+    parse_request(&request);
+
     let result = handle_request(request);
     let response = match result {
         Ok(response) => response,
@@ -77,4 +79,11 @@ fn handle_request(request: Vec<String>) -> Result<Response, Error> {
     let response = Response {status, headers, body};
 
     Ok(response)
+}
+
+
+fn parse_request(request: &Vec<String>) {
+    for line in request {
+        println!("{:?}", line.as_bytes());
+    }
 }
