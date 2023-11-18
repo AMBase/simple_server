@@ -22,7 +22,8 @@ fn main() {
 }
 
 fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
-    let request = parse_request(&tcp_stream)?;
+    let raw_request = read_request(&tcp_stream)?;
+    let request = parse_request(raw_request)?;
     println!("{:?}", request);
 
     // let buf_reader = BufReader::new(&tcp_stream);
@@ -91,8 +92,9 @@ struct Request {
 
 }
 
-fn parse_request(tcp_stream: &TcpStream) -> Result<Request, Error> {
-    let request = Request {};
+type RawRequest = Vec<u8>;
+
+fn read_request(tcp_stream: &TcpStream) -> Result<RawRequest, Error> {
     let mut reader = BufReader::new(tcp_stream);
     let mut raw_request: Vec<u8> = Vec::new();
     let mut buffer = [0u8; 1024];
@@ -109,5 +111,21 @@ fn parse_request(tcp_stream: &TcpStream) -> Result<Request, Error> {
 
     println!("{:?}", raw_request);
 
-    Ok(request)
+    Ok(raw_request)
+}
+
+
+const CR: u8 = 13;
+const LF: u8 = 10;
+const SP: u8 = 32;
+
+
+fn parse_request(raw_request: RawRequest) -> Result<Request, Error> {
+    let i: usize = 0;
+
+    for pos in raw_request {
+        println!("{pos:?}")
+    }
+
+    Ok(Request {})
 }
