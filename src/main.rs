@@ -1,7 +1,13 @@
+mod http;
+
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::io::BufReader;
 use std::io::prelude::*;
+
+use crate::http::request::{RawRequest, Request};
+use crate::http::response::Response;
+
 
 #[derive(Debug)]
 struct Error {
@@ -58,11 +64,7 @@ fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
     Ok(())
 }
 
-struct Response {
-    status: u16,
-    headers: Vec<String>,
-    body: String,
-}
+
 
 
 
@@ -82,20 +84,9 @@ fn handle_request(request: Request) -> Result<Response, Error> {
 
     Ok(response)
 }
-#[derive(Debug)]
-struct Request<'a> {
-    method: &'a[u8],
-}
 
-impl<'a> Request<'a> {
-    fn new() -> Self {
-        Self {
-            method: &[0]
-        }
-    }
-}
 
-type RawRequest = Vec<u8>;
+
 
 fn read_request(tcp_stream: &TcpStream) -> Result<RawRequest, Error> {
     let mut reader = BufReader::new(tcp_stream);
