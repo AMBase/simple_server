@@ -14,8 +14,7 @@ fn main() {
 
     for stream in listener.incoming() {
         let connection = stream.unwrap();
-        let r = handle_connection(connection);
-        println!("{:?}", r.unwrap());
+        let _ = handle_connection(connection);
     }
 
     ()
@@ -23,8 +22,7 @@ fn main() {
 
 fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
     let raw_request = read_request(&tcp_stream)?;
-    let request = parse_request(raw_request)?;
-    println!("{:?}", request);
+    let request = parse_request(&raw_request)?;
 
     // let buf_reader = BufReader::new(&tcp_stream);
     // let request: Vec<String> = buf_reader
@@ -38,8 +36,8 @@ fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
         Ok(response) => response,
         Err(error) => {
             let data = format!("HTTP/1.1 {} {}\r\n", error.code, error.message).to_string();
-            let result = tcp_stream.write_all(data.as_bytes());
-            println!("{:#?}", result.unwrap());
+            let _ = tcp_stream.write_all(data.as_bytes());
+
             return Ok(());
         }
     };
@@ -55,8 +53,7 @@ fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
     data.push_str("\r\n\r\n");
     data.push_str(&response.body);
 
-    let result = tcp_stream.write_all(data.as_bytes());
-    println!("{:#?}", result.unwrap());
+    let _ = tcp_stream.write_all(data.as_bytes());
 
     Ok(())
 }
@@ -71,8 +68,6 @@ struct Response {
 
 
 fn handle_request(request: Request) -> Result<Response, Error> {
-    println!("{request:#?}");
-
     // if request.len() <= 0 {
     //     return Err(Error {code: 500, message: String::from("Internal Server Error")});
     // }
@@ -88,8 +83,16 @@ fn handle_request(request: Request) -> Result<Response, Error> {
     Ok(response)
 }
 #[derive(Debug)]
-struct Request {
+struct Request<'a> {
+    method: &'a[u8],
+}
 
+impl<'a> Request<'a> {
+    fn new() -> Self {
+        Self {
+            method: &[0]
+        }
+    }
 }
 
 type RawRequest = Vec<u8>;
@@ -107,10 +110,6 @@ fn read_request(tcp_stream: &TcpStream) -> Result<RawRequest, Error> {
         }
     }
 
-
-
-    println!("{:?}", raw_request);
-
     Ok(raw_request)
 }
 
@@ -120,12 +119,22 @@ const LF: u8 = 10;
 const SP: u8 = 32;
 
 
-fn parse_request(raw_request: RawRequest) -> Result<Request, Error> {
-    let i: usize = 0;
+fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
+    let mut i: usize = 0;
+    let mut request = Request::new();
 
-    for pos in raw_request {
-        println!("{pos:?}")
+    for (idx, char) in raw_request.iter().enumerate() {
+        println!("{char:?}");
+        if *char == SP {
+            match i {
+                0 => {
+                    request.method = &raw_request[0..idx];
+                    i += 1;
+                },
+                _ => println!("{i:?}"),
+            }
+        }
     }
 
-    Ok(Request {})
+    Ok(request)
 }
