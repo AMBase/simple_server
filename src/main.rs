@@ -110,22 +110,50 @@ const LF: u8 = 10;
 const SP: u8 = 32;
 
 
+enum ParseState {
+    Method,
+    RequestURI,
+    HTTPVersion,
+    End
+}
+
 fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
-    let mut i: usize = 0;
+    let mut state: ParseState = ParseState::Method;
     let mut request = Request::new();
 
+    println!("{:?}", String::from_utf8_lossy(raw_request));
+
+    let mut last = 0usize;
     for (idx, char) in raw_request.iter().enumerate() {
-        println!("{char:?}");
-        if *char == SP {
-            match i {
-                0 => {
-                    request.method = &raw_request[0..idx];
-                    i += 1;
-                },
-                _ => println!("{i:?}"),
+        match state {
+            ParseState::Method => {
+                if *char == SP {
+                    request.method = &raw_request[last..idx];
+                    state = ParseState::RequestURI;
+                    last = idx + 1;
+                }
+            },
+            ParseState::RequestURI => {
+                if *char == SP {
+                    request.uri = &raw_request[last..idx];
+                    state = ParseState::HTTPVersion;
+                    last = idx + 1;
+                }
             }
+            ParseState::HTTPVersion => {
+                if *char == CR {
+                    request.version = &raw_request[last..idx];
+                    state = ParseState::End;
+                    last = idx;
+                }
+            }
+            ParseState::End => break,
         }
     }
+    println!("{:?}", request);
+    println!("{:?}", String::from_utf8_lossy(request.method));
+    println!("{:?}", String::from_utf8_lossy(request.uri));
+    println!("{:?}", String::from_utf8_lossy(request.version));
 
     Ok(request)
 }
