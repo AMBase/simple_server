@@ -5,8 +5,8 @@ use std::io::Write;
 use std::io::BufReader;
 use std::io::prelude::*;
 
-use crate::http::request::{RawRequest, Request};
-use crate::http::response::Response;
+use crate::http::request::RawRequest;
+use crate::http::{Request, Response};
 
 pub struct Server<A: ToSocketAddrs> {
     addr: A,

@@ -1,4 +1,4 @@
-use simple_server::http::server::Server;
+use simple_server::http::Server;
 
 
 
