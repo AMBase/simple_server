@@ -1,3 +1,5 @@
+use crate::http::parser::ParseState;
+
 use std::net::{ToSocketAddrs, TcpListener, TcpStream};
 
 use std::io::Write;
@@ -33,15 +35,8 @@ struct Error {
 }
 
 fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
-    let raw_request = read_request(&tcp_stream)?;
+    let raw_request = read_request(&mut tcp_stream)?;
     let request = parse_request(&raw_request)?;
-
-    // let buf_reader = BufReader::new(&tcp_stream);
-    // let request: Vec<String> = buf_reader
-    //     .lines()
-    //     .map(|result| result.unwrap())
-    //     .take_while(|line| !line.is_empty())
-    //     .collect();
 
     let result = handle_request(request);
     let response = match result {
@@ -94,18 +89,61 @@ fn handle_request(request: Request) -> Result<Response, Error> {
 
 
 
-fn read_request(tcp_stream: &TcpStream) -> Result<RawRequest, Error> {
-    let mut reader = BufReader::new(tcp_stream);
+fn read_request(tcp_stream: &mut TcpStream) -> Result<RawRequest, Error> {
+    let mut buffer = [0u8; 2];
     let mut raw_request: Vec<u8> = Vec::new();
-    let mut buffer = [0u8; 1024];
 
     loop {
-        let bytes_read = reader.read(&mut buffer).unwrap();
-        raw_request.extend_from_slice(&buffer[..bytes_read]);
+        let bytes_read = tcp_stream.read(&mut buffer).unwrap();
+
+        let mut state: ParseState = ParseState::Method;
+        let mut request = Request::new();
+
+        let mut last = 0usize;
+        for i in 0..=buffer.len() -1  {
+            let char = buffer[i];
+            println!("{char:?}");
+            match state {
+                ParseState::Method => {
+                    if char == SP {
+                        request.method = &raw_request[last..i];
+                        state = ParseState::RequestURI;
+                        last = i + 1;
+                    }
+                },
+                ParseState::RequestURI => {
+                    if char == SP {
+                        request.uri = &raw_request[last..i];
+                        state = ParseState::HTTPVersion;
+                        last = i + 1;
+                    }
+                },
+                ParseState::HTTPVersion => {
+                    if char == CR {
+                        request.version = &raw_request[last..i];
+                        state = ParseState::End;
+                        last = i;
+                    }
+                },
+                ParseState::End => break,
+            }
+        }
+        println!("{:?}", request);
+        println!("{:?}", String::from_utf8_lossy(request.method));
+        println!("{:?}", String::from_utf8_lossy(request.uri));
+        println!("{:?}", String::from_utf8_lossy(request.version));
+
         if bytes_read < 1024 {
             break;
         }
     }
+
+
+    println!("{buffer:?}");
+
+
+    let mut reader = BufReader::new(tcp_stream);
+
 
     Ok(raw_request)
 }
@@ -116,12 +154,7 @@ const LF: u8 = 10;
 const SP: u8 = 32;
 
 
-enum ParseState {
-    Method,
-    RequestURI,
-    HTTPVersion,
-    End
-}
+
 
 fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
     let mut state: ParseState = ParseState::Method;
