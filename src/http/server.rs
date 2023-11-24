@@ -90,13 +90,14 @@ fn handle_request(request: Request) -> Result<Response, Error> {
 
 
 fn read_request(tcp_stream: &mut TcpStream) -> Result<RawRequest, Error> {
-    let mut buffer = [0u8; 2];
+    let mut buffer = [0u8; 512];
     let mut raw_request: Vec<u8> = Vec::new();
 
     loop {
         let bytes_read = tcp_stream.read(&mut buffer).unwrap();
 
         let mut state: ParseState = ParseState::Method;
+
         let mut request = Request::new();
 
         let mut last = 0usize;
@@ -105,11 +106,8 @@ fn read_request(tcp_stream: &mut TcpStream) -> Result<RawRequest, Error> {
             println!("{char:?}");
             match state {
                 ParseState::Method => {
-                    if char == SP {
-                        request.method = &raw_request[last..i];
-                        state = ParseState::RequestURI;
-                        last = i + 1;
-                    }
+                    request.method = super::parser::parse_method(tcp_stream, &mut buffer);
+                    state = ParseState::RequestURI;
                 },
                 ParseState::RequestURI => {
                     if char == SP {
@@ -129,11 +127,11 @@ fn read_request(tcp_stream: &mut TcpStream) -> Result<RawRequest, Error> {
             }
         }
         println!("{:?}", request);
-        println!("{:?}", String::from_utf8_lossy(request.method));
+        println!("{:?}", request.method);
         println!("{:?}", String::from_utf8_lossy(request.uri));
         println!("{:?}", String::from_utf8_lossy(request.version));
 
-        if bytes_read < 1024 {
+        if bytes_read < 512 {
             break;
         }
     }
@@ -166,11 +164,7 @@ fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
     for (idx, char) in raw_request.iter().enumerate() {
         match state {
             ParseState::Method => {
-                if *char == SP {
-                    request.method = &raw_request[last..idx];
-                    state = ParseState::RequestURI;
-                    last = idx + 1;
-                }
+                continue;
             },
             ParseState::RequestURI => {
                 if *char == SP {
@@ -190,7 +184,7 @@ fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
         }
     }
     println!("{:?}", request);
-    println!("{:?}", String::from_utf8_lossy(request.method));
+    println!("{:?}", request.method);
     println!("{:?}", String::from_utf8_lossy(request.uri));
     println!("{:?}", String::from_utf8_lossy(request.version));
 
