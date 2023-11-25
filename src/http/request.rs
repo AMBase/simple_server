@@ -16,18 +16,18 @@ pub enum Method {
 }
 
 #[derive(Debug)]
-pub struct Request<'a> {
+pub struct Request {
     pub method: Method,
-    pub uri: &'a[u8],
-    pub version: &'a[u8],
+    pub uri: String,
+    pub version: String,
 }
 
-impl<'a> Request<'a> {
+impl Request {
     pub fn new() -> Self {
         Self {
             method: Method::GET,
-            uri: &[0],
-            version: &[0],
+            uri: String::from(""),
+            version: String::from(""),
         }
     }
 }

@@ -1,13 +1,13 @@
-use crate::http::parser::ParseState;
+
 
 use std::net::{ToSocketAddrs, TcpListener, TcpStream};
 
 use std::io::Write;
 
-use std::io::BufReader;
+
 use std::io::prelude::*;
 
-use crate::http::request::RawRequest;
+
 use crate::http::{Request, Response};
 
 pub struct Server<A: ToSocketAddrs> {
@@ -29,14 +29,13 @@ impl<A: ToSocketAddrs> Server<A> {
 }
 
 #[derive(Debug)]
-struct Error {
-    code: u16,
-    message: String,
+pub struct Error {
+    pub code: u16,
+    pub message: String,
 }
 
 fn handle_connection(mut tcp_stream: TcpStream) -> Result<(), Error> {
-    let raw_request = read_request(&mut tcp_stream)?;
-    let request = parse_request(&raw_request)?;
+    let request = read_request(&mut tcp_stream)?;
 
     let result = handle_request(request);
     let response = match result {
@@ -89,104 +88,19 @@ fn handle_request(request: Request) -> Result<Response, Error> {
 
 
 
-fn read_request(tcp_stream: &mut TcpStream) -> Result<RawRequest, Error> {
-    let mut buffer = [0u8; 512];
-    let mut raw_request: Vec<u8> = Vec::new();
-
-    loop {
-        let bytes_read = tcp_stream.read(&mut buffer).unwrap();
-
-        let mut state: ParseState = ParseState::Method;
-
-        let mut request = Request::new();
-
-        let mut last = 0usize;
-        for i in 0..=buffer.len() -1  {
-            let char = buffer[i];
-            println!("{char:?}");
-            match state {
-                ParseState::Method => {
-                    request.method = super::parser::parse_method(tcp_stream, &mut buffer);
-                    state = ParseState::RequestURI;
-                },
-                ParseState::RequestURI => {
-                    if char == SP {
-                        request.uri = &raw_request[last..i];
-                        state = ParseState::HTTPVersion;
-                        last = i + 1;
-                    }
-                },
-                ParseState::HTTPVersion => {
-                    if char == CR {
-                        request.version = &raw_request[last..i];
-                        state = ParseState::End;
-                        last = i;
-                    }
-                },
-                ParseState::End => break,
-            }
-        }
-        println!("{:?}", request);
-        println!("{:?}", request.method);
-        println!("{:?}", String::from_utf8_lossy(request.uri));
-        println!("{:?}", String::from_utf8_lossy(request.version));
-
-        if bytes_read < 512 {
-            break;
-        }
-    }
-
-
-    println!("{buffer:?}");
-
-
-    let mut reader = BufReader::new(tcp_stream);
-
-
-    Ok(raw_request)
-}
-
-
-const CR: u8 = 13;
-const LF: u8 = 10;
-const SP: u8 = 32;
-
-
-
-
-fn parse_request(raw_request: &RawRequest) -> Result<Request, Error> {
-    let mut state: ParseState = ParseState::Method;
+fn read_request(tcp_stream: &mut TcpStream) -> Result<Request, Error> {
+    let mut buffer = [0u8; 2];
     let mut request = Request::new();
+    request.method = super::parser::parse_method(tcp_stream, &mut buffer).unwrap();
+    request.uri = super::parser::parse_uri(tcp_stream, &mut buffer);
+    request.version = super::parser::parse_version(tcp_stream, &mut buffer);
 
-    println!("{:?}", String::from_utf8_lossy(raw_request));
-
-    let mut last = 0usize;
-    for (idx, char) in raw_request.iter().enumerate() {
-        match state {
-            ParseState::Method => {
-                continue;
-            },
-            ParseState::RequestURI => {
-                if *char == SP {
-                    request.uri = &raw_request[last..idx];
-                    state = ParseState::HTTPVersion;
-                    last = idx + 1;
-                }
-            },
-            ParseState::HTTPVersion => {
-                if *char == CR {
-                    request.version = &raw_request[last..idx];
-                    state = ParseState::End;
-                    last = idx;
-                }
-            },
-            ParseState::End => break,
-        }
-    }
     println!("{:?}", request);
     println!("{:?}", request.method);
-    println!("{:?}", String::from_utf8_lossy(request.uri));
-    println!("{:?}", String::from_utf8_lossy(request.version));
+    // println!("{:?}", String::from_utf8_lossy(request.uri));
+    // println!("{:?}", String::from_utf8_lossy(request.version));
+
+    println!("{buffer:?}");
 
     Ok(request)
 }
