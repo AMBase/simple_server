@@ -92,7 +92,7 @@ fn read_request(tcp_stream: &mut TcpStream) -> Result<Request, Error> {
     let mut buffer = [0u8; 2];
     let mut request = Request::new();
     request.method = super::parser::parse_method(tcp_stream, &mut buffer).unwrap();
-    request.uri = super::parser::parse_uri(tcp_stream, &mut buffer);
+    request.uri = super::parser::parse_uri(tcp_stream, &mut buffer).unwrap();
     request.version = super::parser::parse_version(tcp_stream, &mut buffer);
 
     println!("{:?}", request);
